@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 
-import { TextField, Box, Button, Typography, styled } from '@mui/material';
+import { TextField, Box, Button, Typography, styled, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 import { API } from '../../service/api';
@@ -77,6 +77,8 @@ const Login = ({ isUserAuthenticated }) => {
     const [error, showError] = useState('');
     const [account, toggleAccount] = useState('login');
 
+    const [pendingLogin, setPendingLogin] = useState(null);
+
     const navigate = useNavigate();
     const { setAccount } = useContext(DataContext);
 
@@ -94,22 +96,47 @@ const Login = ({ isUserAuthenticated }) => {
         setSignup({ ...signup, [e.target.name]: e.target.value });
     }
 
+    const handleLoginSuccess = (response) => {
+        showError('');
+        sessionStorage.setItem('accessToken',`Bearer ${response.data.accessToken}`);
+        sessionStorage.setItem('refreshToken',`Bearer ${response.data.refreshToken}`);
+        setAccount({ name: response.data.name, username: response.data.username});
+        isUserAuthenticated(true);
+        setLogin(loginInitialValues);
+        navigate('/');
+    }
+
     const loginUser = async () => {
         let response = await API.userLogin(login);
         if (response.isSuccess) {
-            showError('');
-
-            sessionStorage.setItem('accessToken', `Bearer ${response.data.accessToken}`);
-            sessionStorage.setItem('refreshToken', `Bearer ${response.data.refreshToken}`);
-            setAccount({ name: response.data.name, username: response.data.username });
-            
-            isUserAuthenticated(true)
-            setLogin(loginInitialValues);
-            navigate('/');
-        } else {
+            handleLoginSuccess(response);
+            return;
+        } 
+        
+        if (response.code === 'ACTIVE_SESSION_EXISTS'){
+            setPendingLogin(login);
+            return;
+        }
+        
+        else {
             showError('Something went wrong! please try again later');
         }
     }
+
+    const confirmTakeover =async()=>{
+        const credentials =pendingLogin;
+        setPendingLogin(null);
+        const response = await API.userLoginTakeover(credentials);
+        if (response.isSuccess){
+            handleLoginSuccess(response);
+        }else{
+            showError('Takeover failed,please try again');
+        }
+    };
+
+    const cancelTakeover= () => {
+        setPendingLogin(null);
+    };
 
     const signupUser = async () => {
         let response = await API.userSignup(signup);
@@ -153,6 +180,20 @@ const Login = ({ isUserAuthenticated }) => {
                         </Wrapper>
                 }
             </Box>
+
+            <Dialog open={!!pendingLogin} onClose={cancelTakeover}>
+                <DialogTitle> Active session detected</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        You're already signed in on another device or browser.
+                        Taking over will log that session out immediately.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={cancelTakeover}>Cancel</Button>
+                    <Button onclick={confirmTakeover} variant="contained" color="error">Take Over</Button>
+                </DialogActions>
+            </Dialog>
         </Component>
     )
 }

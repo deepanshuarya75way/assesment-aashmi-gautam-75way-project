@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
 import Token from '../model/token.js';
+import User from '../model/user.js';
 
 dotenv.config();
 
@@ -14,9 +15,17 @@ export const authenticateToken = (request, response, next) => {
         return response.status(401).json({ msg: 'token is missing' });
     }
 
-    jwt.verify(token, process.env.ACCESS_SECRET_KEY, (error, user) => {
+    jwt.verify(token, process.env.ACCESS_SECRET_KEY, async (error, payload) => {
         if (error) {
             return response.status(403).json({ msg: 'invalid token' })
+        }
+
+        const user= await User.findById(payload._id).select('activeSessionId');
+        if (!user || user.activeSessionId !== payload.sessionId){
+            return response.staus(401).json({
+                code: 'SESSION_TERMINATED',
+                msg: 'Your session was ended because you signed in on another device.'
+            });
         }
 
         request.user = user;

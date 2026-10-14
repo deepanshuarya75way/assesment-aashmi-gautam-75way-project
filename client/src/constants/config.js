@@ -27,6 +27,7 @@ export const API_NOTIFICATION_MESSAGES = {
 // NEED SERVICE CALL: { url: "/", method: "POST/GET/PUT/DELETE" }
 export const SERVICE_URLS = {
     userLogin: { url: '/login', method: 'POST' },
+    userLoginTakeover: {url: '/login?takeoer=true', method: 'POST'},
     userSignup: { url: '/signup', method: 'POST' },
     getAllPosts: { url: '/posts', method: 'GET', params: true },
     getRefreshToken: { url: '/token', method: 'POST' },

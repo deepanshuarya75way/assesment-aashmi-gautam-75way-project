@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-import { Box } from '@mui/material';
+import { Box, Snackbar, Alert } from '@mui/material';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 //components
@@ -26,6 +26,17 @@ const PrivateRoute = ({ isAuthenticated, ...props }) => {
 function App() {
 
   const [isAuthenticated, isUserAuthenticated] = useState(false);
+
+  const[kickedMsg, setKickedMsg] = useState('');
+
+  useEffect(()=>{
+    const onKicked =(e) => {
+      isUserAuthenticated(false);
+      setKickedMsg(e.detail || 'Your session was ended because you signed in on another device.');
+    };
+    window.addEventListener('Session-terminated', onKicked);
+    return ()=>window.removeEventListener('session-terminated', onKicked);
+  },[]);
 
   return (
     <DataProvider>
@@ -59,6 +70,16 @@ function App() {
             </Route>
           </Routes>
         </Box>
+        <Snackbar
+          open={!!kickedMsg}
+          autoHideDuration={6000}
+          onClose={() => setKickedMsg('')}
+          anchorOrigin={{vertical:'top', horizontal:'center'}}
+        >
+          <Alert severit="warning" onClose={()=>setKickedMsg('')} sx={{width: '100%'}}>
+            {kickedMsg}
+          </Alert>
+        </Snackbar>
       </BrowserRouter>
     </DataProvider>
   );
